@@ -583,6 +583,18 @@ function showErr(pid,msg){const e=$('em-'+pid);e.textContent='✗ '+msg;e.classL
 function hideErr(pid){$('em-'+pid).classList.remove('show');}
 function fmtBytes(b){if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'KB';return(b/1048576).toFixed(2)+'MB';}
 
+// Parse "HH:MM:SS" / "MM:SS" / plain number to seconds
+function parseTime(v){
+  if(!v||!v.trim()) return null;
+  v=v.trim();
+  if(/^\d+(\.\d+)?$/.test(v)) return parseFloat(v);
+  const p=v.split(':'); let s=0;
+  if(p.length===3) s=+p[0]*3600+ +p[1]*60+parseFloat(p[2]||'0');
+  else if(p.length===2) s=+p[0]*60+parseFloat(p[1]||'0');
+  else return null;
+  return isNaN(s)?null:s;
+}
+
 function showOut(pid,url,name,sb,sa){
   const isAud=['mp3','aac','wav','flac','ogg','opus'].some(e=>name.endsWith('.'+e));
   const isGif=name.endsWith('.gif');
@@ -757,11 +769,20 @@ async function rCP(){
 async function rTR(){
   await run('tr','btn-tr',async()=>{
     const{f,nm}=await wf('tr');
-    const s=$('tr-s').value||'0', e=$('tr-e').value;
+    const sRaw=$('tr-s').value||'0', eRaw=$('tr-e').value;
+    const start=parseTime(sRaw), end=parseTime(eRaw);
+    if(start===null) return alert('开始时间格式无效，请使用 HH:MM:SS 或秒数');
+    if(eRaw.trim() && end===null) return alert('结束时间格式无效，请使用 HH:MM:SS 或秒数');
+    if(eRaw.trim() && end!==null && end<=start) return alert('结束时间必须大于开始时间');
     const mode=$('tr-m').value, fmt=$('tr-f').value;
     const out='out_tr.'+fmt;
-    const args=['-i',nm,'-ss',s];
-    if(e) args.push('-to',e);
+    const args=[];
+    // Fast mode: -ss before -i (keyframe-level seek, no decode)
+    if(mode==='fast') args.push('-ss',sRaw);
+    args.push('-i',nm);
+    // Accurate mode: -ss after -i (decode + discard, frame-accurate)
+    if(mode!=='fast') args.push('-ss',sRaw);
+    if(eRaw.trim()) args.push('-t',String(end-start));  // duration, more reliable than -to
     if(mode==='fast') args.push('-c','copy');
     else args.push('-c:v','libx264','-crf','23','-preset','fast','-c:a','aac');
     args.push(out);
