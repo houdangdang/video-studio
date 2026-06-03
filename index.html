@@ -1,0 +1,845 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VideoForge — 本地视频处理</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:#0a0a0f; --s1:#111118; --s2:#1a1a24; --s3:#22222f; --s4:#2a2a38;
+  --b1:rgba(255,255,255,0.06); --b2:rgba(255,255,255,0.11); --b3:rgba(255,255,255,0.18);
+  --acc:#7c6af7; --acc2:#a393ff; --acc-d:rgba(124,106,247,0.14); --acc-g:rgba(124,106,247,0.28);
+  --txt:#eeeaf8; --txt2:#9490b0; --txt3:#524f6a;
+  --grn:#4ade80; --grn-d:rgba(74,222,128,0.11);
+  --org:#fb923c; --org-d:rgba(251,146,60,0.11);
+  --red:#f87171; --red-d:rgba(248,113,113,0.11);
+  --cyn:#22d3ee; --cyn-d:rgba(34,211,238,0.09);
+  --r:10px; --rl:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--txt);font-family:'Inter',sans-serif;font-size:14px;min-height:100vh;overflow-x:hidden}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(255,255,255,0.013) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,0.013) 1px,transparent 1px);background-size:52px 52px;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:0 24px}
+
+/* HEADER */
+header{padding:26px 0 22px;border-bottom:1px solid var(--b1);display:flex;align-items:center;gap:14px}
+.lm{width:38px;height:38px;background:var(--acc);border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.lm svg{width:20px;height:20px}
+.lt{font-family:'Syne',sans-serif;font-size:21px;font-weight:800;letter-spacing:-.4px}
+.ls{font-family:'DM Mono',monospace;font-size:10px;color:var(--txt3);letter-spacing:.05em;margin-top:1px}
+.hbadge{margin-left:auto;font-family:'DM Mono',monospace;font-size:11px;padding:4px 11px;border-radius:20px;border:1px solid;white-space:nowrap}
+.hbadge.loading{background:var(--cyn-d);border-color:rgba(34,211,238,0.2);color:var(--cyn)}
+.hbadge.ready{background:var(--grn-d);border-color:rgba(74,222,128,0.2);color:var(--grn)}
+.hbadge.error{background:var(--red-d);border-color:rgba(248,113,113,0.2);color:var(--red)}
+
+/* NAV */
+.tnav{display:flex;gap:2px;padding:18px 0 0;border-bottom:1px solid var(--b1);overflow-x:auto;scrollbar-width:none}
+.tnav::-webkit-scrollbar{display:none}
+.tbtn{display:flex;align-items:center;gap:6px;padding:9px 15px 11px;background:transparent;border:none;border-bottom:2px solid transparent;color:var(--txt2);font-family:'Inter',sans-serif;font-size:13px;cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s;margin-bottom:-1px}
+.tbtn svg{width:14px;height:14px;opacity:.55;flex-shrink:0;transition:opacity .15s}
+.tbtn:hover{color:var(--txt)} .tbtn:hover svg{opacity:.75}
+.tbtn.active{color:var(--acc2);border-bottom-color:var(--acc);font-weight:500}
+.tbtn.active svg{opacity:1}
+
+/* MAIN */
+main{padding:28px 0 60px}
+.panel{display:none} .panel.active{display:block}
+
+/* STATUS */
+.sbar{display:flex;align-items:center;gap:8px;padding:10px 15px;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);margin-bottom:20px;font-size:12px;font-family:'DM Mono',monospace;color:var(--txt2)}
+.sdot{width:7px;height:7px;border-radius:50%;flex-shrink:0;transition:background .3s}
+.sdot.loading{background:var(--cyn);animation:pulse 1.2s infinite}
+.sdot.ready{background:var(--grn)} .sdot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+/* DROP */
+.dz{border:1.5px dashed var(--b2);border-radius:var(--rl);background:var(--s1);padding:48px 24px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative;overflow:hidden}
+.dz:hover,.dz.over{border-color:var(--acc);background:var(--s2)}
+.dz:hover::before,.dz.over::before{opacity:1}
+.dz::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 50% -10%,var(--acc-d) 0%,transparent 65%);opacity:0;transition:opacity .3s;pointer-events:none}
+.di{width:52px;height:52px;background:var(--s3);border-radius:14px;display:flex;align-items:center;justify-content:center;margin:0 auto 18px;border:1px solid var(--b2)}
+.di svg{width:24px;height:24px;color:var(--acc2)}
+.dt{font-family:'Syne',sans-serif;font-size:16px;font-weight:600;margin-bottom:7px}
+.ds{color:var(--txt2);font-size:12.5px;line-height:1.65}
+.ds span{display:inline-block;background:var(--s3);border:1px solid var(--b1);border-radius:4px;padding:1px 6px;font-family:'DM Mono',monospace;font-size:10px;color:var(--txt3);margin:0 2px}
+input[type=file]{display:none}
+
+/* FILE INFO */
+.fi{display:none;background:var(--s1);border:1px solid var(--b2);border-radius:var(--rl);padding:18px 20px;margin-top:14px;align-items:center;gap:14px}
+.fi.show{display:flex}
+.fthumb{width:76px;height:52px;background:var(--s3);border-radius:var(--r);overflow:hidden;flex-shrink:0;display:flex;align-items:center;justify-content:center;border:1px solid var(--b1)}
+.fthumb svg{color:var(--txt3)}
+.fmeta{flex:1;min-width:0}
+.fname{font-family:'DM Mono',monospace;font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:7px}
+.ftags{display:flex;gap:5px;flex-wrap:wrap}
+.tag{font-family:'DM Mono',monospace;font-size:10px;padding:2px 8px;border-radius:4px;border:1px solid}
+.tc{background:var(--cyn-d);border-color:rgba(34,211,238,0.2);color:var(--cyn)}
+.to{background:var(--org-d);border-color:rgba(251,146,60,0.2);color:var(--org)}
+.tp{background:var(--acc-d);border-color:rgba(124,106,247,0.2);color:var(--acc2)}
+.tg{background:var(--grn-d);border-color:rgba(74,222,128,0.2);color:var(--grn)}
+.fchg{background:var(--s3);border:1px solid var(--b1);color:var(--txt2);font-size:12px;padding:6px 13px;border-radius:var(--r);cursor:pointer;white-space:nowrap;transition:color .15s,border-color .15s}
+.fchg:hover{color:var(--txt);border-color:var(--b2)}
+
+/* SETTINGS */
+.sg{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:18px}
+@media(max-width:580px){.sg{grid-template-columns:1fr}}
+.sg3{grid-template-columns:1fr 1fr 1fr}
+@media(max-width:680px){.sg3{grid-template-columns:1fr 1fr}}
+.sc{background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:14px;transition:border-color .15s}
+.sc:hover{border-color:var(--b2)}
+.sl{font-size:10.5px;font-family:'DM Mono',monospace;color:var(--txt3);letter-spacing:.07em;text-transform:uppercase;margin-bottom:9px;display:flex;align-items:center;gap:5px}
+.full{grid-column:1/-1}
+select,input[type=number],input[type=text]{width:100%;background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);color:var(--txt);font-family:'DM Mono',monospace;font-size:12.5px;padding:8px 11px;appearance:none;outline:none;transition:border-color .15s}
+select:focus,input:focus{border-color:var(--acc)}
+select option{background:#1a1a24}
+.rw{display:flex;align-items:center;gap:9px}
+input[type=range]{-webkit-appearance:none;flex:1;height:3px;background:var(--s3);border-radius:2px;border:none;outline:none;cursor:pointer}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:15px;height:15px;background:var(--acc);border-radius:50%;box-shadow:0 0 0 3px var(--acc-d);cursor:pointer;transition:box-shadow .15s}
+input[type=range]::-webkit-slider-thumb:hover{box-shadow:0 0 0 5px var(--acc-g)}
+.rv{font-family:'DM Mono',monospace;font-size:12px;color:var(--acc2);min-width:44px;text-align:right}
+.sdiv{height:1px;background:var(--b1);margin:22px 0}
+.stit{font-family:'DM Mono',monospace;font-size:10px;color:var(--txt3);letter-spacing:.1em;text-transform:uppercase;margin-bottom:12px}
+
+/* PRESETS */
+.chips{display:flex;gap:5px;flex-wrap:wrap;margin-top:6px}
+.chip{background:var(--s2);border:1px solid var(--b1);color:var(--txt2);font-family:'DM Mono',monospace;font-size:11px;padding:5px 12px;border-radius:20px;cursor:pointer;transition:all .15s}
+.chip:hover{border-color:var(--acc);color:var(--acc2)}
+.chip.on{background:var(--acc-d);border-color:rgba(124,106,247,.4);color:var(--acc2)}
+
+/* ACTION */
+.ar{margin-top:22px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btp{background:var(--acc);border:none;color:#fff;font-family:'Syne',sans-serif;font-size:13.5px;font-weight:700;letter-spacing:.02em;padding:11px 26px;border-radius:var(--r);cursor:pointer;display:flex;align-items:center;gap:7px;transition:background .15s,transform .1s,box-shadow .2s;position:relative;overflow:hidden}
+.btp::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.1) 0%,transparent 55%);pointer-events:none}
+.btp:hover{background:#8f7ffb;box-shadow:0 4px 24px var(--acc-g)}
+.btp:active{transform:scale(.98)}
+.btp:disabled{background:var(--s3);color:var(--txt3);cursor:not-allowed;box-shadow:none}
+.btp svg{width:15px;height:15px;flex-shrink:0}
+.bts{background:transparent;border:1px solid var(--b2);color:var(--txt2);font-size:13px;padding:10px 16px;border-radius:var(--r);cursor:pointer;transition:color .15s,border-color .15s}
+.bts:hover{color:var(--txt);border-color:var(--b3)}
+
+/* PROGRESS */
+.pw{display:none;margin-top:18px;background:var(--s1);border:1px solid var(--b1);border-radius:var(--r);padding:18px}
+.pw.show{display:block}
+.ph{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px}
+.pl{font-size:12.5px;color:var(--txt2);display:flex;align-items:center;gap:7px}
+.pd{width:7px;height:7px;border-radius:50%;background:var(--acc);animation:pulse 1.3s infinite}
+.pp{font-family:'DM Mono',monospace;font-size:12.5px;color:var(--acc2)}
+.pbb{height:3px;background:var(--s3);border-radius:2px;overflow:hidden}
+.pbf{height:100%;background:linear-gradient(90deg,var(--acc),var(--acc2));border-radius:2px;transition:width .35s ease;width:0%}
+.plog{margin-top:12px;font-family:'DM Mono',monospace;font-size:10.5px;color:var(--txt3);background:var(--s2);border:1px solid var(--b1);border-radius:var(--r);padding:10px;max-height:72px;overflow-y:auto;line-height:1.75;scrollbar-width:thin;scrollbar-color:var(--s4) transparent}
+
+/* OUTPUT */
+.ow{display:none;margin-top:18px;background:var(--grn-d);border:1px solid rgba(74,222,128,.18);border-radius:var(--r);padding:18px}
+.ow.show{display:block}
+.oh{display:flex;align-items:center;gap:9px;margin-bottom:13px}
+.oc{width:26px;height:26px;background:var(--grn-d);border:1.5px solid rgba(74,222,128,.35);border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.oc svg{width:13px;height:13px;color:var(--grn)}
+.oti{font-family:'Syne',sans-serif;font-size:14px;font-weight:700;color:var(--grn)}
+.om{font-size:11.5px;color:var(--txt2);margin-bottom:13px;font-family:'DM Mono',monospace;line-height:1.7}
+.bdl{background:var(--grn);border:none;color:#0a0a0f;font-family:'Syne',sans-serif;font-size:12.5px;font-weight:700;padding:9px 20px;border-radius:var(--r);cursor:pointer;display:inline-flex;align-items:center;gap:6px;text-decoration:none;transition:opacity .15s}
+.bdl:hover{opacity:.85}
+.bdl svg{width:14px;height:14px}
+
+/* ERROR */
+.em{display:none;background:var(--red-d);border:1px solid rgba(248,113,113,.2);border-radius:var(--r);padding:13px 16px;color:var(--red);font-size:12px;margin-top:14px;font-family:'DM Mono',monospace;line-height:1.6}
+.em.show{display:block}
+
+/* LOADING OVERLAY */
+#ov{position:fixed;inset:0;background:rgba(10,10,15,.94);z-index:100;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;backdrop-filter:blur(3px)}
+#ov.gone{display:none}
+.ovlogo{font-family:'Syne',sans-serif;font-size:30px;font-weight:800;letter-spacing:-.5px}
+.ovlogo span{color:var(--acc)}
+.ovbar{width:220px;height:3px;background:var(--s3);border-radius:2px;overflow:hidden}
+.ovfill{height:100%;background:var(--acc);border-radius:2px;animation:shimmer 1.8s ease-in-out infinite}
+@keyframes shimmer{0%{width:0;margin-left:0}50%{width:65%;margin-left:15%}100%{width:0;margin-left:100%}}
+.ovtxt{font-family:'DM Mono',monospace;font-size:12px;color:var(--txt3)}
+
+/* VIDEO PREVIEW */
+.vp{display:none;margin-top:14px}
+.vp.show{display:block}
+.vp video{width:100%;max-height:220px;border-radius:var(--r);background:#000;border:1px solid var(--b1)}
+
+/* TIME inputs */
+.ti{display:flex;gap:8px;align-items:center}
+.ti input{flex:1}
+.tsep{color:var(--txt3);font-family:'DM Mono',monospace;font-size:14px}
+</style>
+</head>
+<body>
+
+<!-- file:// protocol detection — show early warning -->
+<div id="fwarn" style="display:none;position:fixed;inset:0;background:rgba(10,10,15,.96);z-index:200;flex-direction:column;align-items:center;justify-content:center;gap:18px;padding:32px;text-align:center;font-family:'Inter',sans-serif">
+  <div style="font-size:42px">⚠️</div>
+  <div style="font-family:'Syne',sans-serif;font-size:20px;font-weight:700;color:#f87171">无法以 file:// 协议运行</div>
+  <div style="font-size:13px;color:#9490b0;line-height:1.9;max-width:420px">
+    浏览器安全策略禁止从本地文件加载跨域 Web Worker（FFmpeg 依赖）。<br>
+    请使用本地 HTTP 服务器启动：
+  </div>
+  <div style="background:var(--s2);border:1px solid var(--b2);border-radius:10px;padding:14px 22px;font-family:'DM Mono',monospace;font-size:13px;color:var(--acc2);text-align:left;line-height:1.8">
+    cd demo/focus<br>
+    python3 server.py<br>
+    <span style="color:var(--txt3)"># 然后打开 →</span> http://localhost:8765
+  </div>
+  <button onclick="document.getElementById('fwarn').style.display='none'" style="background:var(--s3);border:1px solid var(--b2);color:var(--txt);padding:9px 22px;border-radius:8px;cursor:pointer;font-size:12.5px;margin-top:6px">我知道，继续尝试（功能受限）</button>
+</div>
+<script>
+(function(){
+  if(window.location.protocol==='file:'){
+    document.getElementById('fwarn').style.display='flex';
+  }
+})();
+</script>
+
+<div id="ov">
+  <div class="ovlogo">Video<span>Forge</span></div>
+  <div class="ovbar"><div class="ovfill"></div></div>
+  <div class="ovtxt" id="ovtxt">正在加载 FFmpeg 引擎…</div>
+</div>
+
+<div class="wrap">
+  <header>
+    <div class="lm">
+      <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"><polygon points="5,3 19,12 5,21"/></svg>
+    </div>
+    <div>
+      <div class="lt">VideoForge</div>
+      <div class="ls">LOCAL · PRIVATE · FFMPEG_WASM</div>
+    </div>
+    <div class="hbadge loading" id="hbadge">⏳ 加载引擎中</div>
+  </header>
+
+  <nav class="tnav">
+    <button class="tbtn active" onclick="sw(this,'cv')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+      格式转换
+    </button>
+    <button class="tbtn" onclick="sw(this,'cp')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="4" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      视频压缩
+    </button>
+    <button class="tbtn" onclick="sw(this,'tr')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>
+      视频剪切
+    </button>
+    <button class="tbtn" onclick="sw(this,'cr')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 2 6 8 2 8"/><polyline points="18 22 18 16 22 16"/><path d="M6 8H22V20a2 2 0 0 1-2 2H6z"/><path d="M6 8V4a2 2 0 0 1 2-2h10"/></svg>
+      视频裁剪
+    </button>
+    <button class="tbtn" onclick="sw(this,'ex')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+      提取音频
+    </button>
+    <button class="tbtn" onclick="sw(this,'gf')">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M7 2v20M17 2v20M2 12h20"/></svg>
+      转为 GIF
+    </button>
+  </nav>
+
+  <main>
+    <div class="sbar">
+      <div class="sdot loading" id="sdot"></div>
+      <span id="stxt">正在加载 FFmpeg WASM 引擎，请稍候（首次约 15–30 秒，需要网络）…</span>
+    </div>
+
+    <!-- ═══════════ 格式转换 ═══════════ -->
+    <div class="panel active" id="p-cv">
+      <div class="dz" id="dz-cv" onclick="$('fi-cv').click()" ondragover="dov(event,'dz-cv')" ondragleave="dlv('dz-cv')" ondrop="dp(event,'fi-cv','dz-cv','cv')">
+        <input type="file" id="fi-cv" accept="video/*" onchange="fsel(event,'cv')">
+        <div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg></div>
+        <div class="dt">拖入视频或点击选择</div>
+        <div class="ds">支持 <span>MP4</span><span>MOV</span><span>AVI</span><span>MKV</span><span>WebM</span><span>FLV</span><span>WMV</span><span>M4V</span></div>
+      </div>
+      <div class="fi" id="fib-cv">
+        <div class="fthumb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><polygon points="10,8 16,12 10,16"/></svg></div>
+        <div class="fmeta"><div class="fname" id="fn-cv">—</div><div class="ftags" id="ftg-cv"></div></div>
+        <button class="fchg" onclick="$('fi-cv').click()">更换</button>
+      </div>
+      <div class="sdiv"></div>
+      <div class="stit">输出设置</div>
+      <div class="sg">
+        <div class="sc"><div class="sl">目标格式</div>
+          <select id="cv-fmt"><option value="mp4">MP4 (H.264)</option><option value="webm">WebM (VP9)</option><option value="mov">MOV</option><option value="avi">AVI</option><option value="mkv">MKV</option><option value="flv">FLV</option><option value="m4v">M4V</option></select>
+        </div>
+        <div class="sc"><div class="sl">视频质量</div>
+          <select id="cv-q"><option value="18">高质量 (CRF 18)</option><option value="23" selected>标准 (CRF 23)</option><option value="28">低质量 (CRF 28)</option><option value="35">极压缩 (CRF 35)</option></select>
+        </div>
+        <div class="sc"><div class="sl">视频编码</div>
+          <select id="cv-vc"><option value="libx264">H.264 (libx264)</option><option value="libx265">H.265 (libx265)</option><option value="libvpx-vp9">VP9</option><option value="copy">直接复制（快速）</option></select>
+        </div>
+        <div class="sc"><div class="sl">音频编码</div>
+          <select id="cv-ac"><option value="aac">AAC</option><option value="libmp3lame">MP3</option><option value="libopus">Opus</option><option value="copy">直接复制</option></select>
+        </div>
+      </div>
+      <div class="ar"><button class="btp" id="btn-cv" onclick="rCV()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>开始转换</button></div>
+      <div class="pw" id="pw-cv"><div class="ph"><div class="pl"><div class="pd"></div>转换中…</div><div class="pp" id="pp-cv">0%</div></div><div class="pbb"><div class="pbf" id="pb-cv"></div></div><div class="plog" id="lg-cv"></div></div>
+      <div class="em" id="em-cv"></div>
+      <div class="ow" id="ow-cv"></div>
+    </div>
+
+    <!-- ═══════════ 视频压缩 ═══════════ -->
+    <div class="panel" id="p-cp">
+      <div class="dz" id="dz-cp" onclick="$('fi-cp').click()" ondragover="dov(event,'dz-cp')" ondragleave="dlv('dz-cp')" ondrop="dp(event,'fi-cp','dz-cp','cp')">
+        <input type="file" id="fi-cp" accept="video/*" onchange="fsel(event,'cp')">
+        <div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="4" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg></div>
+        <div class="dt">拖入要压缩的视频</div>
+        <div class="ds">全程本地处理，视频不离开你的电脑</div>
+      </div>
+      <div class="fi" id="fib-cp">
+        <div class="fthumb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><polygon points="10,8 16,12 10,16"/></svg></div>
+        <div class="fmeta"><div class="fname" id="fn-cp">—</div><div class="ftags" id="ftg-cp"></div></div>
+        <button class="fchg" onclick="$('fi-cp').click()">更换</button>
+      </div>
+      <div class="sdiv"></div>
+      <div class="stit">压缩预设</div>
+      <div class="chips">
+        <div class="chip on" data-crf="23" data-sc="-1" onclick="selPre(this,'cp')">🎯 均衡（推荐）</div>
+        <div class="chip" data-crf="28" data-sc="1280" onclick="selPre(this,'cp')">📱 移动端</div>
+        <div class="chip" data-crf="18" data-sc="-1" onclick="selPre(this,'cp')">✨ 高清优先</div>
+        <div class="chip" data-crf="35" data-sc="854" onclick="selPre(this,'cp')">📦 极致压缩</div>
+        <div class="chip" data-crf="45" data-sc="640" onclick="selPre(this,'cp')">🚀 最小体积</div>
+      </div>
+      <div class="sg" style="margin-top:14px">
+        <div class="sc"><div class="sl">压缩率 CRF（越大越小）</div>
+          <div class="rw"><input type="range" id="cp-crf" min="0" max="51" value="23" oninput="$('crf-v').textContent=this.value"><span class="rv" id="crf-v">23</span></div>
+        </div>
+        <div class="sc"><div class="sl">分辨率缩放</div>
+          <select id="cp-sc"><option value="-1">保持原始</option><option value="1920">1080p (1920w)</option><option value="1280">720p (1280w)</option><option value="854">480p (854w)</option><option value="640">360p (640w)</option></select>
+        </div>
+        <div class="sc"><div class="sl">编码速度</div>
+          <select id="cp-pr"><option value="fast">快速</option><option value="medium" selected>均衡</option><option value="slow">慢速（更优）</option></select>
+        </div>
+        <div class="sc"><div class="sl">音频处理</div>
+          <select id="cp-au"><option value="keep">保留音频</option><option value="comp">压缩音频（64k）</option><option value="rm">移除音频</option></select>
+        </div>
+      </div>
+      <div class="ar"><button class="btp" id="btn-cp" onclick="rCP()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="4" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>开始压缩</button></div>
+      <div class="pw" id="pw-cp"><div class="ph"><div class="pl"><div class="pd"></div>压缩中…</div><div class="pp" id="pp-cp">0%</div></div><div class="pbb"><div class="pbf" id="pb-cp"></div></div><div class="plog" id="lg-cp"></div></div>
+      <div class="em" id="em-cp"></div>
+      <div class="ow" id="ow-cp"></div>
+    </div>
+
+    <!-- ═══════════ 视频剪切 ═══════════ -->
+    <div class="panel" id="p-tr">
+      <div class="dz" id="dz-tr" onclick="$('fi-tr').click()" ondragover="dov(event,'dz-tr')" ondragleave="dlv('dz-tr')" ondrop="dp(event,'fi-tr','dz-tr','tr')">
+        <input type="file" id="fi-tr" accept="video/*" onchange="fsel(event,'tr')">
+        <div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg></div>
+        <div class="dt">拖入要剪切的视频</div>
+        <div class="ds">精确到秒，支持快速剪切（无重编码）</div>
+      </div>
+      <div class="fi" id="fib-tr">
+        <div class="fthumb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><polygon points="10,8 16,12 10,16"/></svg></div>
+        <div class="fmeta"><div class="fname" id="fn-tr">—</div><div class="ftags" id="ftg-tr"></div></div>
+        <button class="fchg" onclick="$('fi-tr').click()">更换</button>
+      </div>
+      <div class="vp" id="vp-tr"><video id="vpv-tr" controls></video></div>
+      <div class="sdiv"></div>
+      <div class="sg">
+        <div class="sc"><div class="sl">开始时间</div>
+          <input type="text" id="tr-s" placeholder="00:00:00" value="00:00:00">
+          <div style="font-size:10.5px;color:var(--txt3);margin-top:6px;font-family:'DM Mono',monospace">格式 HH:MM:SS 或秒数</div>
+        </div>
+        <div class="sc"><div class="sl">结束时间</div>
+          <input type="text" id="tr-e" placeholder="留空=到末尾">
+          <div style="font-size:10.5px;color:var(--txt3);margin-top:6px;font-family:'DM Mono',monospace">留空则保留到末尾</div>
+        </div>
+        <div class="sc"><div class="sl">剪切模式</div>
+          <select id="tr-m"><option value="fast">快速（关键帧对齐，无重编码）</option><option value="acc">精确（重编码，稍慢）</option></select>
+        </div>
+        <div class="sc"><div class="sl">输出格式</div>
+          <select id="tr-f"><option value="mp4">MP4</option><option value="mov">MOV</option><option value="webm">WebM</option><option value="mkv">MKV</option></select>
+        </div>
+      </div>
+      <div class="ar"><button class="btp" id="btn-tr" onclick="rTR()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>开始剪切</button></div>
+      <div class="pw" id="pw-tr"><div class="ph"><div class="pl"><div class="pd"></div>剪切中…</div><div class="pp" id="pp-tr">0%</div></div><div class="pbb"><div class="pbf" id="pb-tr"></div></div><div class="plog" id="lg-tr"></div></div>
+      <div class="em" id="em-tr"></div>
+      <div class="ow" id="ow-tr"></div>
+    </div>
+
+    <!-- ═══════════ 视频裁剪 ═══════════ -->
+    <div class="panel" id="p-cr">
+      <div class="dz" id="dz-cr" onclick="$('fi-cr').click()" ondragover="dov(event,'dz-cr')" ondragleave="dlv('dz-cr')" ondrop="dp(event,'fi-cr','dz-cr','cr')">
+        <input type="file" id="fi-cr" accept="video/*" onchange="fsel(event,'cr')">
+        <div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 2 6 8 2 8"/><polyline points="18 22 18 16 22 16"/><path d="M6 8H22V20a2 2 0 0 1-2 2H6z"/><path d="M6 8V4a2 2 0 0 1 2-2h10"/></svg></div>
+        <div class="dt">拖入要裁剪的视频</div>
+        <div class="ds">支持自定义尺寸和比例预设</div>
+      </div>
+      <div class="fi" id="fib-cr">
+        <div class="fthumb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><polygon points="10,8 16,12 10,16"/></svg></div>
+        <div class="fmeta"><div class="fname" id="fn-cr">—</div><div class="ftags" id="ftg-cr"></div></div>
+        <button class="fchg" onclick="$('fi-cr').click()">更换</button>
+      </div>
+      <div class="sdiv"></div>
+      <div class="stit">比例预设</div>
+      <div class="chips">
+        <div class="chip on" onclick="setCrp(this,null,null,null,null)">自定义</div>
+        <div class="chip" onclick="setCrp(this,1920,1080,null,null)">16:9 横屏</div>
+        <div class="chip" onclick="setCrp(this,1080,1920,null,null)">9:16 竖屏</div>
+        <div class="chip" onclick="setCrp(this,1080,1080,null,null)">1:1 方形</div>
+        <div class="chip" onclick="setCrp(this,1440,1080,null,null)">4:3</div>
+        <div class="chip" onclick="setCrp(this,2560,1080,null,null)">21:9 宽屏</div>
+      </div>
+      <div class="sg" style="margin-top:14px">
+        <div class="sc"><div class="sl">裁剪宽度 (px)</div><input type="number" id="cr-w" placeholder="如：1920" min="2"></div>
+        <div class="sc"><div class="sl">裁剪高度 (px)</div><input type="number" id="cr-h" placeholder="如：1080" min="2"></div>
+        <div class="sc"><div class="sl">X 偏移（留空=居中）</div><input type="number" id="cr-x" placeholder="0" min="0"></div>
+        <div class="sc"><div class="sl">Y 偏移（留空=居中）</div><input type="number" id="cr-y" placeholder="0" min="0"></div>
+        <div class="sc full"><div class="sl">输出格式</div>
+          <select id="cr-f" style="max-width:180px"><option value="mp4">MP4</option><option value="mov">MOV</option><option value="webm">WebM</option></select>
+        </div>
+      </div>
+      <div class="ar"><button class="btp" id="btn-cr" onclick="rCR()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polyline points="6 2 6 8 2 8"/><polyline points="18 22 18 16 22 16"/><path d="M6 8H22V20a2 2 0 0 1-2 2H6z"/><path d="M6 8V4a2 2 0 0 1 2-2h10"/></svg>开始裁剪</button></div>
+      <div class="pw" id="pw-cr"><div class="ph"><div class="pl"><div class="pd"></div>裁剪中…</div><div class="pp" id="pp-cr">0%</div></div><div class="pbb"><div class="pbf" id="pb-cr"></div></div><div class="plog" id="lg-cr"></div></div>
+      <div class="em" id="em-cr"></div>
+      <div class="ow" id="ow-cr"></div>
+    </div>
+
+    <!-- ═══════════ 提取音频 ═══════════ -->
+    <div class="panel" id="p-ex">
+      <div class="dz" id="dz-ex" onclick="$('fi-ex').click()" ondragover="dov(event,'dz-ex')" ondragleave="dlv('dz-ex')" ondrop="dp(event,'fi-ex','dz-ex','ex')">
+        <input type="file" id="fi-ex" accept="video/*" onchange="fsel(event,'ex')">
+        <div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+        <div class="dt">拖入视频提取音频</div>
+        <div class="ds">支持输出 <span>MP3</span><span>AAC</span><span>WAV</span><span>FLAC</span><span>OGG</span><span>Opus</span></div>
+      </div>
+      <div class="fi" id="fib-ex">
+        <div class="fthumb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><polygon points="10,8 16,12 10,16"/></svg></div>
+        <div class="fmeta"><div class="fname" id="fn-ex">—</div><div class="ftags" id="ftg-ex"></div></div>
+        <button class="fchg" onclick="$('fi-ex').click()">更换</button>
+      </div>
+      <div class="sdiv"></div>
+      <div class="sg">
+        <div class="sc"><div class="sl">输出格式</div>
+          <select id="ex-f"><option value="mp3">MP3（最通用）</option><option value="aac">AAC（高质量）</option><option value="wav">WAV（无损）</option><option value="flac">FLAC（无损压缩）</option><option value="ogg">OGG Vorbis</option><option value="opus">Opus（极小）</option></select>
+        </div>
+        <div class="sc"><div class="sl">音频码率</div>
+          <select id="ex-b"><option value="320k">320 kbps</option><option value="192k" selected>192 kbps</option><option value="128k">128 kbps</option><option value="64k">64 kbps</option></select>
+        </div>
+      </div>
+      <div class="ar"><button class="btp" id="btn-ex" onclick="rEX()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>提取音频</button></div>
+      <div class="pw" id="pw-ex"><div class="ph"><div class="pl"><div class="pd"></div>提取中…</div><div class="pp" id="pp-ex">0%</div></div><div class="pbb"><div class="pbf" id="pb-ex"></div></div><div class="plog" id="lg-ex"></div></div>
+      <div class="em" id="em-ex"></div>
+      <div class="ow" id="ow-ex"></div>
+    </div>
+
+    <!-- ═══════════ 转为 GIF ═══════════ -->
+    <div class="panel" id="p-gf">
+      <div class="dz" id="dz-gf" onclick="$('fi-gf').click()" ondragover="dov(event,'dz-gf')" ondragleave="dlv('dz-gf')" ondrop="dp(event,'fi-gf','dz-gf','gf')">
+        <input type="file" id="fi-gf" accept="video/*" onchange="fsel(event,'gf')">
+        <div class="di"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M7 2v20M17 2v20M2 12h20"/></svg></div>
+        <div class="dt">视频转 GIF 动图</div>
+        <div class="ds">双通道调色板优化，色彩更鲜艳</div>
+      </div>
+      <div class="fi" id="fib-gf">
+        <div class="fthumb"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="2" width="20" height="20" rx="2"/><polygon points="10,8 16,12 10,16"/></svg></div>
+        <div class="fmeta"><div class="fname" id="fn-gf">—</div><div class="ftags" id="ftg-gf"></div></div>
+        <button class="fchg" onclick="$('fi-gf').click()">更换</button>
+      </div>
+      <div class="sdiv"></div>
+      <div class="sg">
+        <div class="sc"><div class="sl">开始时间（秒）</div><input type="number" id="gf-s" value="0" min="0" placeholder="0"></div>
+        <div class="sc"><div class="sl">时长（秒，最多30s）</div><input type="number" id="gf-d" value="5" min="1" max="30" placeholder="5"></div>
+        <div class="sc"><div class="sl">帧率 FPS</div>
+          <div class="rw"><input type="range" id="gf-fps" min="5" max="25" value="12" oninput="$('fps-v').textContent=this.value+'fps'"><span class="rv" id="fps-v">12fps</span></div>
+        </div>
+        <div class="sc"><div class="sl">输出宽度</div>
+          <select id="gf-w"><option value="320">320px</option><option value="480" selected>480px</option><option value="640">640px</option><option value="800">800px</option></select>
+        </div>
+        <div class="sc"><div class="sl">颜色深度</div>
+          <select id="gf-c"><option value="64">64色（小）</option><option value="128" selected>128色（均衡）</option><option value="256">256色（最优）</option></select>
+        </div>
+      </div>
+      <div class="ar"><button class="btp" id="btn-gf" onclick="rGF()"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="2" y="2" width="20" height="20" rx="2"/><path d="M7 2v20M17 2v20M2 12h20"/></svg>生成 GIF</button></div>
+      <div class="pw" id="pw-gf"><div class="ph"><div class="pl"><div class="pd"></div>生成中…</div><div class="pp" id="pp-gf">0%</div></div><div class="pbb"><div class="pbf" id="pb-gf"></div></div><div class="plog" id="lg-gf"></div></div>
+      <div class="em" id="em-gf"></div>
+      <div class="ow" id="ow-gf"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+'use strict';
+
+// ─── Worker cross-origin polyfill ─────────────────────────────────────────────
+// Browsers reject cross-origin Worker construction, but importScripts()
+// inside a worker CAN load cross-origin scripts. Intercept new Worker(url)
+// for cross-origin HTTP URLs and route them through a same-origin blob.
+(function(){
+  const OrigWorker = window.Worker;
+  window.Worker = function Worker(url, options){
+    const s = url && typeof url === 'object' && url.href ? url.href : String(url);
+    if(/^https?:\/\//.test(s)){
+      // Create a same-origin blob worker that importScripts the real target.
+      const blob = new Blob(['importScripts('+JSON.stringify(s)+');'], {type:'application/javascript'});
+      return new OrigWorker(URL.createObjectURL(blob), options);
+    }
+    return new OrigWorker(url, options);
+  };
+  // Preserve static properties so feature detection (e.g. webpack) still works.
+  Object.setPrototypeOf(window.Worker, OrigWorker);
+  window.Worker.prototype = OrigWorker.prototype;
+})();
+
+const $=id=>document.getElementById(id);
+const F={};     // files store
+let ffReady=false, ffLoading=false;
+let _ff=null;
+
+// ─── FFmpeg Loader ────────────────────────────────────────────────────────────
+async function loadFF(){
+  if(ffReady||ffLoading)return;
+  ffLoading=true;
+  setStatus('loading','正在加载 FFmpeg 引擎（需要网络，约 20–40 秒）…');
+
+  try{
+    // Load ffmpeg script
+    await loadScript('https://unpkg.com/@ffmpeg/ffmpeg@0.12.6/dist/umd/ffmpeg.js');
+    setOvTxt('核心解码器加载中…');
+
+    const {FFmpeg}=FFmpegWASM;
+    _ff=new FFmpeg();
+
+    _ff.on('log',({message})=>{
+      const pid=getActivePid();
+      if(pid)appendLog(pid,message);
+      // parse time for progress
+      const m=message.match(/time=(\d+):(\d+):(\d+\.?\d*)/);
+      if(m) window._t=+m[1]*3600+ +m[2]*60+parseFloat(m[3]);
+    });
+
+    setOvTxt('初始化 WebAssembly…');
+
+    // Try multi-thread first, fallback to single-thread
+    let loaded=false;
+    // Attempt 1: unpkg core
+    try{
+      await _ff.load({
+        coreURL:'https://unpkg.com/@ffmpeg/core@0.12.4/dist/umd/ffmpeg-core.js',
+        wasmURL:'https://unpkg.com/@ffmpeg/core@0.12.4/dist/umd/ffmpeg-core.wasm',
+      });
+      loaded=true;
+    }catch(e1){
+      console.warn('unpkg core failed, trying jsdelivr…',e1.message);
+    }
+
+    if(!loaded){
+      try{
+        await _ff.load({
+          coreURL:'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.4/dist/umd/ffmpeg-core.js',
+          wasmURL:'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.4/dist/umd/ffmpeg-core.wasm',
+        });
+        loaded=true;
+      }catch(e2){
+        throw new Error('核心引擎加载失败，请检查网络连接。\n详情：'+e2.message);
+      }
+    }
+
+    ffReady=true; ffLoading=false;
+    setStatus('ready','✓ FFmpeg 就绪 · 所有处理均在本地完成，零数据上传');
+    setBadge('ready','✓ 引擎就绪');
+    $('ov').classList.add('gone');
+    document.querySelectorAll('.btp').forEach(b=>b.disabled=false);
+
+  }catch(e){
+    ffLoading=false;
+    console.error(e);
+    setStatus('error','✗ 加载失败：'+e.message);
+    setBadge('error','✗ 加载失败');
+    $('ov').innerHTML=`<div style="text-align:center;padding:32px;max-width:420px">
+      <div style="font-size:36px;margin-bottom:16px">⚠️</div>
+      <div style="font-family:'Syne',sans-serif;font-size:18px;font-weight:700;color:#f87171;margin-bottom:12px">引擎加载失败</div>
+      <div style="font-family:'DM Mono',monospace;font-size:12px;color:#9490b0;line-height:1.8;margin-bottom:20px">${e.message.replace(/\n/g,'<br>')}</div>
+      <div style="font-size:12px;color:#524f6a;line-height:1.8;margin-bottom:20px">
+        请确认：<br>
+        1. 使用 <b style="color:#a393ff">Chrome 或 Edge</b> 浏览器<br>
+        2. 通过 <b style="color:#a393ff">server.py</b> 启动（非直接打开文件）<br>
+        3. 网络可访问 unpkg.com / jsdelivr.net
+      </div>
+      <button onclick="$('ov').classList.add('gone')" style="background:var(--s3);border:1px solid var(--b2);color:var(--txt);padding:10px 24px;border-radius:8px;cursor:pointer;font-size:13px">继续（功能受限）</button>
+    </div>`;
+  }
+}
+
+function loadScript(src){
+  return new Promise((res,rej)=>{
+    if(document.querySelector(`script[src="${src}"]`)){res();return;}
+    const s=document.createElement('script');
+    s.src=src; s.crossOrigin='anonymous';
+    s.onload=res; s.onerror=()=>rej(new Error('脚本加载失败: '+src));
+    document.head.appendChild(s);
+  });
+}
+
+function setOvTxt(t){$('ovtxt').textContent=t;}
+function setStatus(t,msg){$('sdot').className='sdot '+t;$('stxt').textContent=msg;}
+function setBadge(t,txt){const b=$('hbadge');b.className='hbadge '+t;b.textContent=txt;}
+function getActivePid(){const p=document.querySelector('.panel.active');return p?p.id.replace('p-',''):null;}
+function appendLog(pid,msg){const e=$('lg-'+pid);if(!e)return;e.textContent+=msg+'\n';e.scrollTop=e.scrollHeight;}
+function setP(pid,v){$('pp-'+pid).textContent=Math.round(v)+'%';$('pb-'+pid).style.width=Math.min(v,100)+'%';}
+function showErr(pid,msg){const e=$('em-'+pid);e.textContent='✗ '+msg;e.classList.add('show');}
+function hideErr(pid){$('em-'+pid).classList.remove('show');}
+function fmtBytes(b){if(b<1024)return b+'B';if(b<1048576)return(b/1024).toFixed(1)+'KB';return(b/1048576).toFixed(2)+'MB';}
+
+function showOut(pid,url,name,sb,sa){
+  const isAud=['mp3','aac','wav','flac','ogg','opus'].some(e=>name.endsWith('.'+e));
+  const isGif=name.endsWith('.gif');
+  const ratio=sb&&sa?((1-sa/sb)*100).toFixed(1):null;
+  let prev='';
+  if(isGif) prev=`<img src="${url}" style="max-width:100%;max-height:200px;border-radius:var(--r);margin-bottom:12px;display:block">`;
+  else if(isAud) prev=`<audio controls src="${url}" style="width:100%;margin-bottom:12px"></audio>`;
+  else prev=`<video controls src="${url}" style="width:100%;max-height:200px;border-radius:var(--r);background:#000;margin-bottom:12px"></video>`;
+  $('ow-'+pid).innerHTML=`
+    <div class="oh"><div class="oc"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></div><div class="oti">处理完成！</div></div>
+    <div class="om">${sb?'原始：'+fmtBytes(sb)+'':''}${sa?' → 输出：'+fmtBytes(sa):''}${ratio?' · 减少了 '+ratio+'%':''}</div>
+    ${prev}
+    <a class="bdl" href="${url}" download="${name}">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      下载 ${name}
+    </a>`;
+  $('ow-'+pid).classList.add('show');
+}
+
+// ─── File Handling ────────────────────────────────────────────────────────────
+function dov(e,id){e.preventDefault();$(id).classList.add('over');}
+function dlv(id){$(id).classList.remove('over');}
+function dp(e,inp,dz,pid){
+  e.preventDefault();$(dz).classList.remove('over');
+  const f=e.dataTransfer.files[0];
+  if(f&&(f.type.startsWith('video/')||/\.(mp4|mov|avi|mkv|webm|flv|wmv|m4v)$/i.test(f.name))){
+    F[pid]=f; updateFI(pid,f);
+  }
+}
+function fsel(e,pid){const f=e.target.files[0];if(f){F[pid]=f;updateFI(pid,f);}}
+
+function updateFI(pid,f){
+  $('fib-'+pid).classList.add('show');
+  $('fn-'+pid).textContent=f.name;
+  const ext=f.name.split('.').pop().toUpperCase();
+  const mb=(f.size/1048576).toFixed(2);
+  $('ftg-'+pid).innerHTML=`<span class="tag tc">${ext}</span><span class="tag to">${mb} MB</span>`;
+  if(pid==='tr'){
+    const url=URL.createObjectURL(f);
+    $('vpv-tr').src=url;
+    $('vp-tr').classList.add('show');
+  }
+  hideErr(pid);
+  $('ow-'+pid).classList.remove('show');
+  $('pw-'+pid).classList.remove('show');
+}
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+async function wf(pid){
+  const f=F[pid];
+  if(!f)throw new Error('请先选择视频文件');
+  const ext=f.name.split('.').pop().toLowerCase();
+  const nm='in_'+pid+'.'+ext;
+  await _ff.writeFile(nm,new Uint8Array(await f.arrayBuffer()));
+  return{f,nm,ext};
+}
+
+function startPW(pid){
+  $('pw-'+pid).classList.add('show');
+  $('ow-'+pid).classList.remove('show');
+  $('lg-'+pid).textContent='';
+  hideErr(pid); setP(pid,0);
+  window._t=0;
+}
+
+function startTick(pid){
+  const t0=Date.now();
+  return setInterval(()=>{
+    const el=(Date.now()-t0)/1000;
+    setP(pid,window._t>0?Math.min(window._t/Math.max(window._t,1)*80,92):Math.min(el*2,88));
+  },400);
+}
+
+async function finish(pid,outNm,f){
+  setP(pid,95);
+  const data=await _ff.readFile(outNm);
+  const ext=outNm.split('.').pop();
+  const mime={mp4:'video/mp4',webm:'video/webm',mov:'video/quicktime',avi:'video/x-msvideo',
+    mkv:'video/x-matroska',flv:'video/x-flv',m4v:'video/mp4',mp3:'audio/mpeg',aac:'audio/aac',
+    wav:'audio/wav',flac:'audio/flac',ogg:'audio/ogg',opus:'audio/opus',gif:'image/gif'};
+  const blob=new Blob([data.buffer],{type:mime[ext]||'application/octet-stream'});
+  const url=URL.createObjectURL(blob);
+  setP(pid,100);
+  const nm=f.name.replace(/\.[^.]+$/,'')+'_vf.'+ext;
+  showOut(pid,url,nm,f.size,blob.size);
+  try{await _ff.deleteFile(outNm);}catch(e){}
+  $('pw-'+pid).classList.remove('show');
+}
+
+// ─── Panel switch ─────────────────────────────────────────────────────────────
+function sw(btn,pid){
+  document.querySelectorAll('.tbtn').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  btn.classList.add('active');
+  $('p-'+pid).classList.add('active');
+}
+
+// ─── Presets ──────────────────────────────────────────────────────────────────
+function selPre(el,pid){
+  el.closest('.chips').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  const crf=el.dataset.crf, sc=el.dataset.sc;
+  if(crf){$('cp-crf').value=crf;$('crf-v').textContent=crf;}
+  if(sc) $('cp-sc').value=sc;
+}
+function setCrp(el,w,h,x,y){
+  el.closest('.chips').querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  el.classList.add('on');
+  if(w) $('cr-w').value=w;
+  if(h) $('cr-h').value=h;
+}
+
+// ─── Runners ──────────────────────────────────────────────────────────────────
+async function run(pid,btn,task){
+  if(!ffReady)return alert('FFmpeg 尚未就绪，请稍候');
+  if(!F[pid])return alert('请先选择视频文件');
+  $(btn).disabled=true;
+  startPW(pid);
+  try{
+    await task();
+  }catch(e){
+    showErr(pid,e.message||'处理失败，请检查文件格式');
+    $('pw-'+pid).classList.remove('show');
+    console.error(e);
+  }
+  $(btn).disabled=false;
+}
+
+// Format Convert
+async function rCV(){
+  await run('cv','btn-cv',async()=>{
+    const{f,nm}=await wf('cv');
+    const fmt=$('cv-fmt').value, crf=$('cv-q').value;
+    const vc=$('cv-vc').value, ac=$('cv-ac').value;
+    const out='out_cv.'+fmt;
+    const args=['-i',nm];
+    if(vc==='copy') args.push('-c:v','copy');
+    else args.push('-c:v',vc,'-crf',crf,'-preset','fast');
+    if(ac==='copy') args.push('-c:a','copy');
+    else args.push('-c:a',ac);
+    args.push('-movflags','+faststart',out);
+    const ti=startTick('cv');
+    await _ff.exec(args);
+    clearInterval(ti);
+    try{await _ff.deleteFile(nm);}catch(e){}
+    await finish('cv',out,f);
+  });
+}
+
+// Compress
+async function rCP(){
+  await run('cp','btn-cp',async()=>{
+    const{f,nm}=await wf('cp');
+    const crf=$('cp-crf').value, sc=$('cp-sc').value;
+    const pr=$('cp-pr').value, au=$('cp-au').value;
+    const out='out_cp.mp4';
+    const args=['-i',nm,'-c:v','libx264','-crf',crf,'-preset',pr];
+    if(sc!=='-1') args.push('-vf','scale='+sc+':-2');
+    if(au==='rm') args.push('-an');
+    else if(au==='comp') args.push('-c:a','aac','-b:a','64k');
+    else args.push('-c:a','aac','-b:a','128k');
+    args.push('-movflags','+faststart',out);
+    const ti=startTick('cp');
+    await _ff.exec(args);
+    clearInterval(ti);
+    try{await _ff.deleteFile(nm);}catch(e){}
+    await finish('cp',out,f);
+  });
+}
+
+// Trim
+async function rTR(){
+  await run('tr','btn-tr',async()=>{
+    const{f,nm}=await wf('tr');
+    const s=$('tr-s').value||'0', e=$('tr-e').value;
+    const mode=$('tr-m').value, fmt=$('tr-f').value;
+    const out='out_tr.'+fmt;
+    const args=['-i',nm,'-ss',s];
+    if(e) args.push('-to',e);
+    if(mode==='fast') args.push('-c','copy');
+    else args.push('-c:v','libx264','-crf','23','-preset','fast','-c:a','aac');
+    args.push(out);
+    const ti=startTick('tr');
+    await _ff.exec(args);
+    clearInterval(ti);
+    try{await _ff.deleteFile(nm);}catch(e){}
+    await finish('tr',out,f);
+  });
+}
+
+// Crop
+async function rCR(){
+  const w=$('cr-w').value, h=$('cr-h').value;
+  if(!w||!h) return alert('请输入裁剪宽度和高度');
+  await run('cr','btn-cr',async()=>{
+    const{f,nm}=await wf('cr');
+    const x=$('cr-x').value||'(in_w-out_w)/2';
+    const y=$('cr-y').value||'(in_h-out_h)/2';
+    const fmt=$('cr-f').value;
+    const out='out_cr.'+fmt;
+    const args=['-i',nm,'-vf','crop='+w+':'+h+':'+x+':'+y,
+                '-c:v','libx264','-crf','23','-preset','fast','-c:a','aac',out];
+    const ti=startTick('cr');
+    await _ff.exec(args);
+    clearInterval(ti);
+    try{await _ff.deleteFile(nm);}catch(e){}
+    await finish('cr',out,f);
+  });
+}
+
+// Extract Audio
+async function rEX(){
+  await run('ex','btn-ex',async()=>{
+    const{f,nm}=await wf('ex');
+    const fmt=$('ex-f').value, br=$('ex-b').value;
+    const out='out_ex.'+fmt;
+    const args=['-i',nm,'-vn'];
+    if(fmt==='wav') args.push('-c:a','pcm_s16le');
+    else if(fmt==='flac') args.push('-c:a','flac');
+    else if(fmt==='mp3') args.push('-c:a','libmp3lame','-b:a',br);
+    else if(fmt==='opus') args.push('-c:a','libopus','-b:a',br);
+    else if(fmt==='ogg') args.push('-c:a','libvorbis','-b:a',br);
+    else args.push('-c:a','aac','-b:a',br);
+    args.push(out);
+    const ti=startTick('ex');
+    await _ff.exec(args);
+    clearInterval(ti);
+    try{await _ff.deleteFile(nm);}catch(e){}
+    await finish('ex',out,f);
+  });
+}
+
+// GIF
+async function rGF(){
+  await run('gf','btn-gf',async()=>{
+    const{f,nm}=await wf('gf');
+    const s=$('gf-s').value||'0', d=$('gf-d').value||'5';
+    const fps=$('gf-fps').value, w=$('gf-w').value, c=$('gf-c').value;
+    const pal='pal.png', out='out_gf.gif';
+    appendLog('gf','[1/2] 生成调色板…');
+    await _ff.exec(['-ss',s,'-t',d,'-i',nm,
+      '-vf','fps='+fps+',scale='+w+':-1:flags=lanczos,palettegen=max_colors='+c,pal]);
+    appendLog('gf','[2/2] 合成 GIF…');
+    const ti=startTick('gf');
+    await _ff.exec(['-ss',s,'-t',d,'-i',nm,'-i',pal,
+      '-filter_complex','[0:v]fps='+fps+',scale='+w+':-1:flags=lanczos[x];[x][1:v]paletteuse=dither=bayer:bayer_scale=5',
+      out]);
+    clearInterval(ti);
+    try{await _ff.deleteFile(pal);}catch(e){}
+    try{await _ff.deleteFile(nm);}catch(e){}
+    await finish('gf',out,f);
+  });
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────────────
+document.querySelectorAll('.btp').forEach(b=>b.disabled=true);
+window.addEventListener('load',loadFF);
+</script>
+</body>
+</html>
