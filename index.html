@@ -776,15 +776,16 @@ async function rTR(){
     if(eRaw.trim() && end!==null && end<=start) return alert('结束时间必须大于开始时间');
     const mode=$('tr-m').value, fmt=$('tr-f').value;
     const out='out_tr.'+fmt;
-    const args=[];
-    // Fast mode: -ss before -i (keyframe-level seek, no decode)
-    if(mode==='fast') args.push('-ss',sRaw);
-    args.push('-i',nm);
-    // Accurate mode: -ss after -i (decode + discard, frame-accurate)
-    if(mode!=='fast') args.push('-ss',sRaw);
-    if(eRaw.trim()) args.push('-t',String(end-start));  // duration, more reliable than -to
-    if(mode==='fast') args.push('-c','copy');
-    else args.push('-c:v','libx264','-crf','23','-preset','fast','-c:a','aac');
+    const args=['-i',nm];
+    // Always use -ss / -to as OUTPUT options (after -i) — avoids WASM seeking bugs
+    if(start>0) args.push('-ss',sRaw);
+    if(eRaw.trim()) args.push('-to',eRaw);
+    if(mode==='fast'){
+      args.push('-c','copy');
+      args.push('-avoid_negative_ts','make_zero');
+    }else{
+      args.push('-c:v','libx264','-crf','23','-preset','fast','-c:a','aac');
+    }
     args.push(out);
     const ti=startTick('tr');
     await _ff.exec(args);
